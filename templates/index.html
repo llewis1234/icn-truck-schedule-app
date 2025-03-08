@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truck Schedule Lookup</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: black;
+            text-align: center;
+            color: white;
+        }
+        h2 {
+            color: red;
+        }
+        .container {
+            background: white;
+            width: 50%;
+            margin: auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(255, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        label {
+            color: black;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        select, button {
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            width: 80%;
+        }
+        select {
+            text-align: center;
+        }
+        button {
+            background-color: red;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: darkred;
+        }
+        #details {
+            margin-top: 20px;
+            padding: 10px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(255, 0, 0, 0.5);
+            text-align: left;
+            display: block;
+            color: black;
+            width: 80%;
+            visibility: visible; /* Ensure results are always visible */
+        }
+        p {
+            font-size: 18px;
+        }
+        strong {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Truck Schedule Lookup</h2>
+        
+        <label for="origin">Select Origin:</label>
+        <select id="origin" onchange="fetchShipDates()">
+            <option value="">Make a Selection</option>
+        </select>
+
+        <label for="destination">Select Destination:</label>
+        <select id="destination" onchange="fetchShipDates()">
+            <option value="">Make a Selection</option>
+        </select>
+
+        <label for="shipDate">Select Ship Date:</label>
+        <select id="shipDate">
+            <option value="">Make a Selection</option>
+        </select>
+        
+        <button onclick="fetchSchedule()">Search</button>
+
+        <div id="details">Results will appear here...</div>
+    </div>
+    
+    <script>
+        function formatTime(timeStr) {
+            if (!timeStr) return ""; // Handle empty times
+            return timeStr.slice(0, 5); // Extract only HH:MM
+        }
+
+        async function fetchOriginsAndDestinations() {
+            try {
+                let response = await fetch('/api/origins-destinations/');
+                let data = await response.json();
+
+                const originSelect = document.getElementById("origin");
+                const destinationSelect = document.getElementById("destination");
+
+                data.origins.forEach(origin => {
+                    let option = document.createElement("option");
+                    option.value = origin;
+                    option.textContent = origin;
+                    originSelect.appendChild(option);
+                });
+
+                data.destinations.forEach(destination => {
+                    let option = document.createElement("option");
+                    option.value = destination;
+                    option.textContent = destination;
+                    destinationSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Error fetching origins and destinations:", error);
+            }
+        }
+
+        async function fetchShipDates() {
+            const origin = document.getElementById("origin").value;
+            const destination = document.getElementById("destination").value;
+
+            if (!origin || !destination) return;
+
+            try {
+                let response = await fetch(`/api/schedule/${origin}/${destination}/`);
+                let data = await response.json();
+
+                const shipDateSelect = document.getElementById("shipDate");
+                shipDateSelect.innerHTML = "<option value=''>Make a Selection</option>";
+
+                let uniqueShipDates = [...new Set(data.map(schedule => schedule.load_day))];
+                uniqueShipDates.forEach(loadDay => {
+                    let option = document.createElement("option");
+                    option.value = loadDay;
+                    option.textContent = loadDay;
+                    shipDateSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Error fetching ship dates:", error);
+            }
+        }
+
+        async function fetchSchedule() {
+            const origin = document.getElementById("origin").value;
+            const destination = document.getElementById("destination").value;
+            const shipDate = document.getElementById("shipDate").value;
+
+            if (!origin || !destination || !shipDate) {
+                alert("Please select Origin, Destination, and Ship Date.");
+                return;
+            }
+
+            try {
+                let response = await fetch(`/api/schedule/${origin}/${destination}/`);
+                let data = await response.json();
+                let filteredData = data.filter(schedule => schedule.load_day === shipDate);
+
+                displaySchedule(filteredData);
+            } catch (error) {
+                console.error("Error fetching schedule:", error);
+            }
+        }
+
+        function displaySchedule(schedules) {
+            const details = document.getElementById("details");
+            details.innerHTML = "";
+            details.style.visibility = "visible";
+
+            if (schedules.length === 0) {
+                details.innerHTML = "<p>No schedule found for the selected options.</p>";
+                return;
+            }
+
+            let schedule = schedules[0];
+
+            details.innerHTML = `
+                <h3>Schedule Details</h3>
+                <p><strong>Load Day:</strong> ${schedule.load_day}</p>
+                <p><strong>Load Start Time:</strong> ${formatTime(schedule.load_start_time)}</p>
+                <p><strong>Load Complete Time:</strong> ${formatTime(schedule.load_complete_time)}</p>
+                <p><strong>Depart Day:</strong> ${schedule.depart_day}</p>
+                <p><strong>Depart Time:</strong> ${formatTime(schedule.depart_time)}</p>
+                <p><strong>Arrive Day:</strong> ${schedule.arrive_day}</p>
+                <p><strong>Arrive Time:</strong> ${formatTime(schedule.arrive_time)}</p>
+                <p><strong>Unload Day:</strong> ${schedule.unload_day}</p>
+                <p><strong>Unload Time:</strong> ${formatTime(schedule.unload_time)}</p>
+            `;
+        }
+
+        window.onload = fetchOriginsAndDestinations;
+    </script>
+</body>
+</html>
