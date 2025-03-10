@@ -1,0 +1,4 @@
+{
+    "appService.defaultWebAppToDeploy": "undefined/subscriptions/f29d74eb-5f31-46c4-9f14-1925d8fa3f26/resourceGroups/appsvc_linux_centralus_basic/providers/Microsoft.Web/sites/icn-truck-schedule-app",
+    "appService.deploySubpath": "."
+}
